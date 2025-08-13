@@ -316,13 +316,13 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 	Logger.Infof("Sending service account token mappings to API: %d mappings", len(serviceAccountMap))
 
 	// Convert map to JSON
-	reportJSON, err := json.Marshal(serviceAccountMap)
+	serviceAccountMapJson, err := json.Marshal(serviceAccountMap)
 	if err != nil {
 		return fmt.Errorf("failed to marshal mappings: %v", err)
 	}
 
 	// Create POST request
-	req, err := http.NewRequest("POST", cu.poolcApiEndpoint, bytes.NewReader(reportJSON))
+	req, err := http.NewRequest("POST", cu.poolcApiEndpoint, bytes.NewReader(serviceAccountMapJson))
 	if err != nil {
 		return fmt.Errorf("failed to create POST request: %v", err)
 	}
