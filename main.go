@@ -54,7 +54,6 @@ type CredentialsUpdater struct {
 	summary          *OperationSummary
 }
 
-// TODO: Bind ClusterRole to each ServiceAccount
 // TODO: Rotate only ServiceAccounts to preserve Secret that contains API key
 func main() {
 	namespace := os.Getenv("TARGET_NAMESPACE")
