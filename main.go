@@ -79,7 +79,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	Logger.Infof("Credentials rotation completed successfully")
+	Logger.Infof("Credentials rotation completed!")
 	Logger.Infof("Operation summary - Created: %d, Errors: %d",
 		updater.summary.NumCreated,
 		updater.summary.NumErrors)
