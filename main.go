@@ -111,6 +111,8 @@ func NewCredentialsUpdater(namespace, poolcApiEndpoint string) (*CredentialsUpda
 }
 
 func (cu *CredentialsUpdater) RotateCredentials() error {
+	Logger.Infof("Starting credentials rotation process...")
+
 	ctx := context.Background()
 
 	// Fetch users from API
