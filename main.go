@@ -24,6 +24,8 @@ const (
 	TargetNamespace = "poolc-users"
 	// An API endpoint with which the CronJob should interact
 	PoolcApiEndpoint = "dev.poolc.org:8080/kubernetes/"
+	// A path from which API_KEY is retrieved
+	ApiKeyMountPath = "/etc/credentials-updater-secret/API_KEY"
 )
 
 type Uuid = string
@@ -174,7 +176,7 @@ func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
 	}
 
 	// Add API key header
-	apiKey, err := getApiKeyFromEnv()
+	apiKey, err := getApiKeyFrom(ApiKeyMountPath)
 	if err != nil {
 		return nil, fmt.Errorf("faild to retrieve API key: %v", err)
 	}
@@ -332,7 +334,7 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add API key header
-	apiKey, err := getApiKeyFromEnv()
+	apiKey, err := getApiKeyFrom(ApiKeyMountPath)
 	if err != nil {
 		return fmt.Errorf("faild to retrieve API key: %v", err)
 	}
@@ -356,10 +358,13 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 	return nil
 }
 
-func getApiKeyFromEnv() (string, error) {
-	apiKey := os.Getenv("API_KEY")
-	if apiKey == "" {
-		return "", fmt.Errorf("API_KEY environment variable is required for sending mappings")
+func getApiKeyFrom(path string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read secret API key: %v", err)
 	}
+
+	apiKey := string(content)
+
 	return apiKey, nil
 }
