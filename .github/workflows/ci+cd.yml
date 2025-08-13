@@ -1,0 +1,159 @@
+name: CI/CD - Push Image & Update Manifests
+
+on:
+  push:
+    branches: ["main"]
+    # Skip this workflow when only k8s manifest files change.
+    # Saves resources by skipping unnecessary image builds.
+    paths-ignore:
+      - manifests/**
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: 1.24.3
+    
+    - name: Run tests
+      run: go test -v ./...
+    
+    - name: Run go vet
+      run: go vet ./...
+    
+    - name: Run go fmt
+      run: |
+        unformatted_files=$(gofmt -s -l .)
+        if [ -n "$unformatted_files" ]; then
+          echo "The following files are not formatted properly:"
+          echo "$unformatted_files"
+          exit 1
+        fi
+        echo "All files are formatted properly!"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      img-ref: steps.meta.outputs.img_ref_by_sha
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Define image metadata
+      id: meta
+      run: |
+        REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        IMG_PREFFIX="${{ env.REGISTRY }}/${REPO}"
+        IMG_REF_BY_SHA="${IMG_PREFFIX}:${{ github.sha }}"
+
+        # Define tags
+        echo "tags<<EOF" >> $GITHUB_OUTPUT
+        echo "${IMG_PREFFIX}:latest" >> $GITHUB_OUTPUT
+        echo "$IMG_REF_BY_SHA" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        # Export sha tagged image reference as output
+        echo "img_ref_by_sha=${IMG_REF_BY_SHA}" >> $GITHUB_OUTPUT
+
+        # Define standard OCI labels
+        echo "labels<<EOF" >> $GITHUB_OUTPUT
+        echo "org.opencontainers.image.title=${{ github.repository }}" >> $GITHUB_OUTPUT
+        echo "org.opencontainers.image.description=${{ github.event.repository.description }}" >> $GITHUB_OUTPUT
+        echo "org.opencontainers.image.revision=${{ github.sha }}" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Check image metadata
+      run: |
+        echo ${{ steps.meta.outputs.tags }}
+        echo ${{ steps.meta.outputs.labels }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # https://docs.github.com/en/code-security/code-scanning/integrating-with-code-scanning/uploading-a-sarif-file-to-github
+  security:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v5
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@0.28.0
+      with:
+        image-ref: ${{ needs.build.outputs.img-ref }}
+        format: sarif
+        output: trivy-results.sarif
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: ${{ always() }}
+      with:
+        sarif_file: trivy-results.sarif
+        category: trivy
+
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Install yq
+        run: |
+          VERSION=v4.43.1
+          wget "https://github.com/mikefarah/yq/releases/download/${VERSION}/yq_linux_amd64" -O /usr/local/bin/yq
+          chmod +x /usr/local/bin/yq
+
+      # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/passing-information-between-jobs#example-defining-outputs-for-a-job
+      - name: Patch kubernetes manifest with image tag
+        run: |
+          export IMAGE="${{ needs.build.outputs.img-ref }}"
+          echo "Patching image: $IMAGE"
+          yq e '.spec.jobTemplate.spec.template.spec.containers[0].image = strenv(IMAGE)' -i manifests/cronjob.yaml
+
+      # https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs
+      - name: Commit and push manifest update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -a -m "Update image to ${{ needs.build.outputs.img-ref }}" -m "[skip actions]" || echo "No changes to commit"
+          git push
