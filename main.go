@@ -21,7 +21,7 @@ const (
 	// Defines how long ServiceAccount tokens are valid (1 week)
 	TokenExpirationSeconds = 7 * 24 * 60 * 60
 	// A target namespace that all the ServiceAccounts belong to
-	TargetNamespace = "user-credentials"
+	TargetNamespace = "poolc-users"
 	// An API endpoint with which the CronJob should interact
 	PoolcApiEndpoint = "dev.poolc.org:8080/kubernetes/"
 )
