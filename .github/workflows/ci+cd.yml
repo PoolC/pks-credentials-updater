@@ -3,10 +3,12 @@ name: CI/CD - Push Image & Update Manifests
 on:
   push:
     branches: ["main"]
-    # Skip this workflow when only k8s manifest files change.
-    # Saves resources by skipping unnecessary image builds.
-    paths-ignore:
-      - manifests/**
+    # Save resources by skipping unnecessary image build.
+    paths:
+    - '**.go'
+    - 'go.*'
+    - '**/Dockerfile*'
+    - '.github/workflows/**'
   workflow_dispatch:
 
 env:
