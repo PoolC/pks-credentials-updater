@@ -47,7 +47,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      img-ref: steps.meta.outputs.img_ref_by_sha
+      img-ref: ${{ steps.meta.outputs.img_ref_by_sha }}
     steps:
     - name: Checkout repository
       uses: actions/checkout@v5
