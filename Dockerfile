@@ -10,7 +10,7 @@ COPY main.go logger.go ./
 
 RUN CGO_ENABLED=0 go build -o credentials-updater .
 
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/static-debian12
 
 COPY --from=builder /app/credentials-updater /credentials-updater
 
