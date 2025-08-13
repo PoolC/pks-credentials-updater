@@ -154,7 +154,6 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 		// Add to the map for API report
 		serviceAccountMap[user.UUID] = token
 		cu.summary.NumCreated++
-		Logger.Infof("Successfully created ServiceAccount and token for user: %s", user.UUID)
 	}
 
 	// Send ServiceAccount mappings to API
@@ -227,7 +226,6 @@ func (cu *CredentialsUpdater) deleteNamespace(ctx context.Context) error {
 	for i := 0; i < WaitSeconds; i++ { // Wait up to `WaitSeconds` seconds
 		_, err := cu.clientset.CoreV1().Namespaces().Get(ctx, cu.namespace, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
-			Logger.Infof("Namespace %s successfully deleted", cu.namespace)
 			return nil
 		}
 		time.Sleep(1 * time.Second)
@@ -253,11 +251,12 @@ func (cu *CredentialsUpdater) createNamespace(ctx context.Context) error {
 		return fmt.Errorf("failed to create namespace: %v", err)
 	}
 
-	Logger.Infof("Successfully created namespace: %s", cu.namespace)
 	return nil
 }
 
 func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user User, serviceAccountName string) error {
+	Logger.Infof("Creating ServiceAccount: %s", serviceAccountName)
+
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      serviceAccountName,
@@ -277,7 +276,6 @@ func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user Use
 		return fmt.Errorf("failed to create service account: %v", err)
 	}
 
-	Logger.Infof("Created ServiceAccount: %s", serviceAccountName)
 	return nil
 }
 
@@ -309,7 +307,6 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 		return "", fmt.Errorf("failed to create token for ServiceAccount %s: %v", serviceAccountName, err)
 	}
 
-	Logger.Infof("Successfully generated token for ServiceAccount: %s", serviceAccountName)
 	return tokenResponse.Status.Token, nil
 }
 
@@ -350,7 +347,6 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 		return fmt.Errorf("API returned non-success status %d", resp.StatusCode)
 	}
 
-	Logger.Infof("Successfully sent mappings to API (status: %d)", resp.StatusCode)
 	Logger.Infof("Sent %d service account token mappings", len(serviceAccountMap))
 
 	return nil
