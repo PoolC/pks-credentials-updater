@@ -54,7 +54,6 @@ type CredentialsUpdater struct {
 	summary          *OperationSummary
 }
 
-// TODO: Rotate only ServiceAccounts to preserve Secret that contains API key
 func main() {
 	namespace := os.Getenv("TARGET_NAMESPACE")
 	if namespace == "" {
