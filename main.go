@@ -79,10 +79,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	Logger.Infof("Credentials rotation completed successfully")
 	Logger.Infof("Operation summary - Created: %d, Errors: %d",
 		updater.summary.NumCreated,
 		updater.summary.NumErrors)
-	Logger.Infof("Credentials rotation completed successfully")
 }
 
 func NewCredentialsUpdater(namespace, poolcApiEndpoint string) (*CredentialsUpdater, error) {
