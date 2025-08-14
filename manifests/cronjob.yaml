@@ -4,6 +4,9 @@ kind: CronJob
 metadata:
   name: credentials-updater
   namespace: poolc-system
+  annotations:
+    # See: https://argo-cd.readthedocs.io/en/release-3.0/user-guide/sync-waves/#how-do-i-configure-waves
+    argocd.argoproj.io/sync-wave: "1"
   labels:
     app.kubernetes.io/name: credentials-updater
     app.kubernetes.io/component: cronjob
