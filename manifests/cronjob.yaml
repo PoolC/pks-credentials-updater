@@ -29,7 +29,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: credentials-updater
-              image: ghcr.io/poolc/pks-credentials-updater:5ea3a2ce7699025ab0ac898d86408625d92e55ef
+              image: ghcr.io/poolc/pks-credentials-updater:f1d9a0c9067c85a6ae803d7bf8e55873590f580a
               imagePullPolicy: IfNotPresent
               envFrom:
                 - configMapRef:
