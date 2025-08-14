@@ -1,0 +1,47 @@
+# See the below link for more information:
+# https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: credentials-updater
+  namespace: argocd
+  finalizers:
+    # Enable background cascade deletion.
+    - resources-finalizer.argocd.argoproj.io/background
+  labels:
+    app.kubernetes.io/name: credentials-updater
+spec:
+  project: poolc-system-proj
+  source:
+    repoURL: https://github.com/PoolC/pks-credentials-updater.git
+    targetRevision: HEAD
+    path: manifests
+  destination:
+    namespace: poolc-system
+    server: https://kubernetes.default.svc
+  syncPolicy:
+    automated:
+      # Specifies if resources should be pruned during auto-syncing.
+      prune: true
+      # Specifies if partial app sync should be executed when resources are changed only in
+      # target Kubernetes cluster and no git change detected.
+      selfHeal: false
+    syncOptions:
+      # Only sync out-of-sync resources, rather than applying every object in the application.
+      - ApplyOutOfSyncOnly=true
+      # Create the namespace specified in spec.destination.namespace if it doesn't exist already.
+      - CreateNamespace=true
+    retry:
+      # The number of failed sync attempt retries.
+      limit: 5
+      backoff:
+        # The amount to back off.
+        duration: 5s
+        # A factor to multiply the base duration after each failed retry.
+        factor: 2
+        # The maximum amount of time allowed for the backoff strategy.
+        maxDuration: 3m
+  info:
+    - name: "See:"
+      value: "https://github.com/PoolC/pks-credentials-updater"
