@@ -73,6 +73,15 @@ spec:
   schedule: "0 15 * * 0" # 기본값
 ```
 
+## Possible Improvements
+
+1. PKS Credentials Updater의 CronJob은 기본 주기가 7일로 설정되어 있습니다. CronJob controller가 Job을 잘 생성하는지
+   테스트하기 위해 수일을 기다릴 수는 없는 노릇이므로, test/production 환경의 분리를 고려해볼 수 있습니다.
+   Argo CD는 [Kustomize](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)와
+   [Helm](https://helm.sh/)을 통한 배포도 지원하므로,
+   이를 [ApplicationSet](https://argo-cd.readthedocs.io/en/stable/user-guide/application-set/)과 결합해
+   production 환경과 test 환경을 분리할 수 있습니다.
+
 ## License
 
 MIT License
