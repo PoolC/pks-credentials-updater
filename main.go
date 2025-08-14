@@ -23,7 +23,7 @@ const (
 	// A target namespace that all the ServiceAccounts belong to
 	TargetNamespace = "poolc-users"
 	// An API endpoint with which the CronJob should interact
-	PoolcApiEndpoint = "http://dev.poolc.org:8080/kubernetes"
+	PoolcApiEndpoint = "http://dev.poolc.org:8080/kubernetes/"
 	// A path from which API_KEY is retrieved
 	ApiKeyMountPath = "/etc/credentials-updater-secret/API_KEY"
 )
