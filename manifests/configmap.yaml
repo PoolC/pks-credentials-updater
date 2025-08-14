@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: credentials-updater-cm
+  namespace: poolc-system
+  labels:
+    app.kubernetes.io/name: credentials-updater
+    app.kubernetes.io/component: config
+data:
+  TARGET_NAMESPACE: "poolc-users"
+  POOLC_API_ENDPOINT: "http://dev.poolc.org:8080/kubernetes"

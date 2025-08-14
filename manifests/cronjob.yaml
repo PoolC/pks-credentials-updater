@@ -1,0 +1,60 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: credentials-updater
+  namespace: poolc-system
+  labels:
+    app.kubernetes.io/name: credentials-updater
+    app.kubernetes.io/component: cronjob
+spec:
+  # Run every Monday at 00:00 in KST (expressed in UTC)
+  schedule: "0 15 * * 0"
+  timeZone: "Etc/UTC"
+  # See: https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#concurrency-policy
+  concurrencyPolicy: Replace
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # This is set to check logs from terminated Jobs.
+      # See: https://kubernetes.io/docs/concepts/workloads/controllers/job/#ttl-mechanism-for-finished-jobs
+      ttlSecondsAfterFinished: 300
+      template:
+        spec:
+          serviceAccountName: credentials-updater
+          restartPolicy: OnFailure
+          containers:
+            - name: credentials-updater
+              image: ghcr.io/poolc/pks-credentials-updater:latest
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - configMapRef:
+                    name: credentials-updater-cm
+              volumeMounts:
+                - name: credentials-updater-secret
+                  readOnly: true
+                  mountPath: /etc/credentials-updater-secret
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "100m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "200m"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                runAsUser: 65534
+                capabilities:
+                  drop:
+                    - ALL
+          volumes:
+            - name: credentials-updater-secret
+              secret:
+                secretName: credentials-updater-secret
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            fsGroup: 65534
