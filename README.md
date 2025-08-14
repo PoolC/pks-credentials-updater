@@ -49,6 +49,18 @@ PKS Credential Updater를 배포하기 이전에, 아래 요구사항을 먼저 
 - 해당 Group에 대응되는 제한적인 ClusterRole과 ClusterRoleBinding이 존재해야 합니다.
 - 해당 Group에 대응되는 제한적인 kyverno ClusterPolicy가 존재해야 합니다.
 
+## Running the Job Immediately
+
+기본적으로 CronJob은 일정 주기에 따라 특정 시점에만 실행되기 때문에, 클러스터에 배포한다고 곧바로 실행되지 않습니다. 이를 수동으로
+실행하기 위해서는, 아래 명령어를 통해 CronJob의 `jobTemplate`으로부터 Job을 직접 생성해야 합니다.
+
+```bash
+kubectl create job \
+    -n poolc-system \
+    --from=cronjob/credentials-updater \
+    "credentials-updater-manual-$(TZ='Etc/UTC' date +'%Y%m%d%H%M%S')"
+```
+
 ## Configuration
 
 ### Schedule
