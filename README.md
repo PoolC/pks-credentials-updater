@@ -49,6 +49,19 @@ PKS Credential Updater를 배포하기 이전에, 아래 요구사항을 먼저 
 - 해당 Group에 대응되는 제한적인 ClusterRole과 ClusterRoleBinding이 존재해야 합니다.
 - 해당 Group에 대응되는 제한적인 kyverno ClusterPolicy가 존재해야 합니다.
 
+## Configuration
+
+### Schedule
+
+PKS Credentials Updater는 Kubernetes [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
+으로 배포됩니다. 해당 CronJob은 KST 기준 매주 월요일 00시 00분에 실행됩니다. 이 주기를 변경하기 위해서는, `manifests/cronjob.yaml`의
+`schedule` 값을 수정해야 합니다:
+
+```yaml
+spec:
+  schedule: "0 15 * * 0" # 기본값
+```
+
 ## Running the Job Immediately
 
 기본적으로 CronJob은 일정 주기에 따라 특정 시점에만 실행되기 때문에, 클러스터에 배포한다고 곧바로 실행되지 않습니다. 이를 수동으로
@@ -59,18 +72,6 @@ kubectl create job \
     -n poolc-system \
     --from=cronjob/credentials-updater \
     "credentials-updater-manual-$(TZ='Etc/UTC' date +'%Y%m%d%H%M%S')"
-```
-
-## Configuration
-
-### Schedule
-
-PKS Credentials Updater는 Kubernetes [CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)으로 배포됩니다.
-해당 CronJob은 KST 기준 매주 월요일 00시 00분에 실행됩니다. 이 주기를 변경하기 위해서는, `manifests/cronjob.yaml`의 `schedule` 값을 수정해야 합니다:
-
-```yaml
-spec:
-  schedule: "0 15 * * 0" # 기본값
 ```
 
 ## Possible Improvements
