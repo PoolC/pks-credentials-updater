@@ -1,4 +1,4 @@
-module github.com/PoolC/credentials-updater
+module github.com/PoolC/pks-credentials-updater
 
 go 1.24.3
 
