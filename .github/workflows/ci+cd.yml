@@ -164,5 +164,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -a -m "Update image to ${{ needs.build.outputs.img-ref }}" -m "[skip actions]" || echo "No changes to commit"
+          git commit -a -F - <<'EOF' || echo "No changes to commit"
+          chore(cd): [skip ci] update manifests
+
+          Used image:
+          ${{ needs.build.outputs.img-ref }}
+          EOF
           git push
