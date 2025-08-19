@@ -251,7 +251,7 @@ func (cu *CredentialsUpdater) createNamespace(ctx context.Context) error {
 }
 
 func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user User, serviceAccountName string) error {
-	Logger.Infof("Creating ServiceAccount: %s", serviceAccountName)
+	Logger.Infof("Creating ServiceAccount %s for user %s", serviceAccountName, user.LoginId)
 
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
