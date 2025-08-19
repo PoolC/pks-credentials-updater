@@ -9,4 +9,4 @@ metadata:
     app.kubernetes.io/component: config
 data:
   TARGET_NAMESPACE: "poolc-users"
-  POOLC_API_ENDPOINT: "http://dev.poolc.org:8080/kubernetes/"
+  POOLC_API_ENDPOINT: "https://api.poolc.org/kubernetes/"
