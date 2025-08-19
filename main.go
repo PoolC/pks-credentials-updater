@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+	"unicode"
 
 	authv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -138,7 +140,7 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 	// Create ServiceAccounts for all users
 	serviceAccountMap := make(ServiceAccountMappings)
 	for _, user := range users {
-		serviceAccountName := user.LoginId
+		serviceAccountName := cu.generateServiceAccountName(user)
 
 		if err := cu.createServiceAccount(ctx, user, serviceAccountName); err != nil {
 			Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.LoginId, err)
@@ -271,6 +273,23 @@ func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user Use
 	}
 
 	return nil
+}
+
+func (cu *CredentialsUpdater) generateServiceAccountName(user User) string {
+	const SuffixLen = 4
+	// ServiceAccount names cannot contain uppercase letters, while user IDs
+	// can contain uppercase letters and are case-sensitive (so we can't simply
+	// lowercase the given `user.LoginId`). To work around this, we append the
+	// last `SuffixLen` characters of the UUID to the lowercased `user.LoginId`
+	// if it contains uppercase letters.
+	if strings.IndexFunc(user.LoginId, unicode.IsUpper) != -1 {
+		if len(user.UUID) >= SuffixLen {
+			return strings.ToLower(user.LoginId) + user.UUID[len(user.UUID)-SuffixLen:]
+		}
+		Logger.Warnf("Malformed UUID '%s' for user %s", user.UUID, user.LoginId)
+		return strings.ToLower(user.LoginId) + user.UUID
+	}
+	return user.LoginId
 }
 
 func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, serviceAccountName string) (string, error) {
