@@ -284,10 +284,12 @@ func (cu *CredentialsUpdater) generateServiceAccountName(user User) string {
 	// if it contains uppercase letters.
 	if strings.IndexFunc(user.LoginId, unicode.IsUpper) != -1 {
 		if len(user.UUID) >= SuffixLen {
-			return strings.ToLower(user.LoginId) + user.UUID[len(user.UUID)-SuffixLen:]
+			return fmt.Sprintf(
+				"%s-%s", strings.ToLower(user.LoginId), user.UUID[len(user.UUID)-SuffixLen:],
+			)
 		}
 		Logger.Warnf("Malformed UUID '%s' for user %s", user.UUID, user.LoginId)
-		return strings.ToLower(user.LoginId) + user.UUID
+		return fmt.Sprintf("%s-%s", strings.ToLower(user.LoginId), user.UUID)
 	}
 	return user.LoginId
 }
