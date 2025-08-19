@@ -23,7 +23,7 @@ const (
 	// A target namespace that all the ServiceAccounts belong to
 	TargetNamespace = "poolc-users"
 	// An API endpoint with which the CronJob should interact
-	PoolcApiEndpoint = "http://dev.poolc.org:8080/kubernetes/"
+	PoolcApiEndpoint = "https://api.poolc.org/kubernetes/"
 	// A path from which API_KEY is retrieved
 	ApiKeyMountPath = "/etc/credentials-updater-secret/API_KEY"
 )
@@ -33,11 +33,12 @@ type ServiceAccountToken = string
 type ServiceAccountMappings = map[Uuid]ServiceAccountToken
 
 type User struct {
-	UUID Uuid
+	UUID    Uuid   `json:"member_uuid"`
+	LoginId string `json:"login_id"`
 }
 
 type APIResponse struct {
-	ActiveMembers []string `json:"activeMembers"`
+	ActiveMembers []User `json:"activeMembers"`
 }
 
 type OperationSummary struct {
@@ -137,10 +138,10 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 	// Create ServiceAccounts for all users
 	serviceAccountMap := make(ServiceAccountMappings)
 	for _, user := range users {
-		serviceAccountName := cu.generateServiceAccountName(user.UUID)
+		serviceAccountName := user.LoginId
 
 		if err := cu.createServiceAccount(ctx, user, serviceAccountName); err != nil {
-			Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.UUID, err)
+			Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.LoginId, err)
 			cu.summary.NumErrors++
 			continue
 		}
@@ -196,16 +197,7 @@ func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
 
-	// Convert UUIDs to User objects
-	users := make([]User, 0, len(apiResponse.ActiveMembers))
-	for _, uuid := range apiResponse.ActiveMembers {
-		user := User{
-			UUID: uuid,
-		}
-		users = append(users, user)
-	}
-
-	return users, nil
+	return apiResponse.ActiveMembers, nil
 }
 
 func (cu *CredentialsUpdater) deleteNamespace(ctx context.Context) error {
@@ -279,10 +271,6 @@ func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user Use
 	}
 
 	return nil
-}
-
-func (cu *CredentialsUpdater) generateServiceAccountName(uuid string) string {
-	return fmt.Sprintf("user-%s", uuid)
 }
 
 func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, serviceAccountName string) (string, error) {
