@@ -57,6 +57,15 @@ PKS Credentials Updater는 Kubernetes [CronJob](https://kubernetes.io/docs/conce
 으로 배포됩니다. 해당 CronJob은 KST 기준 매주 월요일 00시 00분에 실행됩니다. 이 주기를 변경하기 위해서는, `manifests/cronjob.yaml`의
 `schedule` 값을 수정해야 합니다:
 
+> [!IMPORTANT]
+> 해당 주기를 늘리는 경우, ServiceAccount Token의 expiration time도 함께 늘려야 합니다. 그렇지 않을 경우, rotation이
+> 발생하기 이전에 ServiceAccount Token이 먼저 만료되어 동아리원들의 클러스터 접근이 제한될 수 있습니다.
+> 
+> PKS credentials updater에서 expiration time을 늘리는 것과는 별개로, ServiceAccount Token의 가능한 최대 expiration
+> time은 kube-apiserver의 `--service-account-max-token-expiration` 값으로 정해져 있습니다. 초기 설정값은 7일입니다.
+>
+> TODO: App of Apps 패턴 적용 후, kubeadm ClusterConfiguration 링크 추가
+
 ```yaml
 spec:
   schedule: "0 15 * * 0" # 기본값
