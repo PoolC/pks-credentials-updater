@@ -61,9 +61,8 @@ PKS Credentials Updater는 Kubernetes [CronJob](https://kubernetes.io/docs/conce
 > 발생하기 이전에 ServiceAccount Token이 먼저 만료되어 동아리원들의 클러스터 접근이 제한될 수 있습니다.
 > 
 > PKS credentials updater에서 expiration time을 늘리는 것과는 별개로, ServiceAccount Token의 가능한 최대 expiration
-> time은 kube-apiserver의 `--service-account-max-token-expiration` 값으로 정해져 있습니다. 초기 설정값은 7일입니다.
->
-> TODO: App of Apps 패턴 적용 후, kubeadm ClusterConfiguration 링크 추가
+> time은 kube-apiserver의 `--service-account-max-token-expiration` 값으로 정해져 있습니다.
+> [현재 설정값](https://github.com/PoolC/pks-bootstrapping/blob/main/unmanaged/kubeadm-config-n3.yaml)은 7일입니다.
 
 ```yaml
 spec:
