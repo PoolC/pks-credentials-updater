@@ -44,7 +44,6 @@ graph TB
 PKS Credential Updater를 배포하기 이전에, 아래 요구사항을 먼저 만족해야 합니다:
 
 - `poolc-system` Namespace가 PKS 클러스터에 존재해야 합니다.
-- PoolC API 서버와 통신하기 위한 API 키가 `poolc-system` Namespace에 Secret의 형태로 존재해야 합니다.
 - 모든 사용자 ServiceAccount를 포함하는 Group(기본값: `system:serviceaccounts:poolc-users`)이 존재해야 합니다.
 - 해당 Group에 대응되는 제한적인 ClusterRole과 ClusterRoleBinding이 존재해야 합니다.
 - 해당 Group에 대응되는 제한적인 kyverno ClusterPolicy가 존재해야 합니다.
