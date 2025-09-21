@@ -81,6 +81,10 @@ kubectl create job \
     "credentials-updater-manual-$(TZ='Etc/UTC' date +'%Y%m%d%H%M%S')"
 ```
 
+혹은, Argo CD web UI를 이용할 수도 있습니다.
+
+![Creating Job from Argo CD web UI](./assets/create-job-from-argocd.webp)
+
 ## Possible Improvements
 
 1. PKS Credentials Updater의 CronJob은 기본 주기가 7일로 설정되어 있습니다. CronJob controller가 Job을 잘 생성하는지
