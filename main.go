@@ -39,7 +39,7 @@ type User struct {
 	LoginId string `json:"login_id"`
 }
 
-type APIResponse struct {
+type MemberAPIResponse struct {
 	ActiveMembers []User `json:"activeMembers"`
 }
 
@@ -194,7 +194,7 @@ func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
 		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
 
-	var apiResponse APIResponse
+	var apiResponse MemberAPIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
