@@ -75,7 +75,7 @@ func main() {
 	}
 
 	Logger.Infof("Starting credentials rotation for namespace: %s", namespace)
-	Logger.Infof("Using API server: %s", poolcApiEndpoint)
+	Logger.Infof("Using the PoolC API server: %s", poolcApiEndpoint)
 
 	if err := updater.RotateCredentials(); err != nil {
 		Logger.Errorf("Failed to rotate credentials: %v", err)
@@ -118,7 +118,7 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 
 	ctx := context.Background()
 
-	// Fetch users from API
+	// Fetch users from the PoolC API server
 	users, err := cu.fetchUsers()
 	if err != nil {
 		return fmt.Errorf("failed to fetch users: %v", err)
@@ -161,16 +161,16 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 		cu.summary.NumCreated++
 	}
 
-	// Send ServiceAccount mappings to API
+	// Send ServiceAccount mappings to the PoolC API server
 	if err := cu.sendServiceAccountMappings(serviceAccountMap); err != nil {
-		return fmt.Errorf("failed to send mappings to API: %v", err)
+		return fmt.Errorf("failed to send mappings to PoolC API server: %v", err)
 	}
 
 	return nil
 }
 
 func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
-	Logger.Infof("Fetching users from API: %s", cu.poolcApiEndpoint)
+	Logger.Infof("Fetching users from the PoolC API server: %s", cu.poolcApiEndpoint)
 
 	req, err := http.NewRequest("GET", cu.poolcApiEndpoint, nil)
 	if err != nil {
@@ -191,7 +191,7 @@ func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("non-success response status code %d from the PoolC API server", resp.StatusCode)
 	}
 
 	var apiResponse MemberAPIResponse
@@ -322,7 +322,7 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 }
 
 func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap ServiceAccountMappings) error {
-	Logger.Infof("Sending service account token mappings to API: %d mappings", len(serviceAccountMap))
+	Logger.Infof("Sending service account token mappings to the PoolC API server: %d mappings", len(serviceAccountMap))
 
 	// Convert map to JSON
 	serviceAccountMapJson, err := json.Marshal(serviceAccountMap)
@@ -355,7 +355,7 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 
 	// Check response status
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("API returned non-success status %d", resp.StatusCode)
+		return fmt.Errorf("non-success response status code %d from the PoolC API server", resp.StatusCode)
 	}
 
 	Logger.Infof("Sent %d service account token mappings", len(serviceAccountMap))
