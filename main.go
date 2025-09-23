@@ -32,7 +32,7 @@ const (
 
 type uuid = string
 type serviceAccountToken = string
-type serviceAccountMappings = map[uuid]serviceAccountToken
+type serviceAccountTokenByUUID = map[uuid]serviceAccountToken
 
 type user struct {
 	UUID    uuid   `json:"member_uuid"`
@@ -138,7 +138,7 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 	}
 
 	// Create ServiceAccounts for all users
-	serviceAccountMap := make(serviceAccountMappings)
+	serviceAccountTokenMap := make(serviceAccountTokenByUUID)
 	for _, user := range users {
 		serviceAccountName := cu.generateServiceAccountName(user)
 
@@ -157,12 +157,12 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 		}
 
 		// Add to the map for API report
-		serviceAccountMap[user.UUID] = token
+		serviceAccountTokenMap[user.UUID] = token
 		cu.summary.numCreated++
 	}
 
 	// Send ServiceAccount mappings to the PoolC API server
-	if err := cu.sendServiceAccountMappings(serviceAccountMap); err != nil {
+	if err := cu.sendServiceAccountTokens(serviceAccountTokenMap); err != nil {
 		return fmt.Errorf("failed to send mappings to PoolC API server: %v", err)
 	}
 
@@ -321,17 +321,17 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 	return tokenResponse.Status.Token, nil
 }
 
-func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap serviceAccountMappings) error {
-	Logger.Infof("Sending service account token mappings to the PoolC API server: %d mappings", len(serviceAccountMap))
+func (cu *CredentialsUpdater) sendServiceAccountTokens(serviceAccountTokenMap serviceAccountTokenByUUID) error {
+	Logger.Infof("Sending service account token mappings to the PoolC API server: %d mappings", len(serviceAccountTokenMap))
 
 	// Convert map to JSON
-	serviceAccountMapJson, err := json.Marshal(serviceAccountMap)
+	payload, err := json.Marshal(serviceAccountTokenMap)
 	if err != nil {
 		return fmt.Errorf("failed to marshal mappings: %v", err)
 	}
 
 	// Create POST request
-	req, err := http.NewRequest("POST", cu.poolcAPIEndpoint, bytes.NewReader(serviceAccountMapJson))
+	req, err := http.NewRequest("POST", cu.poolcAPIEndpoint, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("failed to create POST request: %v", err)
 	}
@@ -358,7 +358,7 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap servi
 		return fmt.Errorf("non-success response status code %d from the PoolC API server", resp.StatusCode)
 	}
 
-	Logger.Infof("Sent %d service account token mappings", len(serviceAccountMap))
+	Logger.Infof("Sent %d service account token mappings", len(serviceAccountTokenMap))
 
 	return nil
 }
