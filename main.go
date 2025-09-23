@@ -21,61 +21,61 @@ import (
 
 const (
 	// Defines how long ServiceAccount tokens are valid (1 week)
-	TokenExpirationSeconds = 7 * 24 * 60 * 60
+	tokenExpirationSeconds = 7 * 24 * 60 * 60
 	// A target namespace that all the ServiceAccounts belong to
-	TargetNamespace = "poolc-users"
+	targetNamespace = "poolc-users"
 	// An API endpoint with which the CronJob should interact
-	PoolcApiEndpoint = "https://api.poolc.org/kubernetes/"
+	poolcAPIEndpoint = "https://api.poolc.org/kubernetes/"
 	// A path from which API_KEY is retrieved
-	ApiKeyMountPath = "/etc/credentials-updater-secret/API_KEY"
+	apiKeyMountPath = "/etc/credentials-updater-secret/API_KEY"
 )
 
-type Uuid = string
-type ServiceAccountToken = string
-type ServiceAccountMappings = map[Uuid]ServiceAccountToken
+type uuid = string
+type serviceAccountToken = string
+type serviceAccountMappings = map[uuid]serviceAccountToken
 
-type User struct {
-	UUID    Uuid   `json:"member_uuid"`
-	LoginId string `json:"login_id"`
+type user struct {
+	UUID    uuid   `json:"member_uuid"`
+	LoginID string `json:"login_id"`
 }
 
-type MemberAPIResponse struct {
-	ActiveMembers []User `json:"activeMembers"`
+type memberAPIResponse struct {
+	ActiveMembers []user `json:"activeMembers"`
 }
 
-type OperationSummary struct {
-	TotalUsers int
-	NumCreated int
-	NumErrors  int
+type operationSummary struct {
+	totalUsers int
+	numCreated int
+	numErrors  int
 }
 
 type CredentialsUpdater struct {
 	clientset        *kubernetes.Clientset
 	namespace        string
-	poolcApiEndpoint string
+	poolcAPIEndpoint string
 	httpClient       *http.Client
-	summary          *OperationSummary
+	summary          *operationSummary
 }
 
 func main() {
 	namespace := os.Getenv("TARGET_NAMESPACE")
 	if namespace == "" {
-		namespace = TargetNamespace
+		namespace = targetNamespace
 	}
 
-	poolcApiEndpoint := os.Getenv("POOLC_API_ENDPOINT")
-	if poolcApiEndpoint == "" {
-		poolcApiEndpoint = PoolcApiEndpoint
+	endpoint := os.Getenv("POOLC_API_ENDPOINT")
+	if endpoint == "" {
+		endpoint = poolcAPIEndpoint
 	}
 
-	updater, err := NewCredentialsUpdater(namespace, poolcApiEndpoint)
+	updater, err := NewCredentialsUpdater(namespace, endpoint)
 	if err != nil {
 		Logger.Errorf("Failed to create credentials updater: %v", err)
 		os.Exit(1)
 	}
 
 	Logger.Infof("Starting credentials rotation for namespace: %s", namespace)
-	Logger.Infof("Using the PoolC API server: %s", poolcApiEndpoint)
+	Logger.Infof("Using the PoolC API server: %s", endpoint)
 
 	if err := updater.RotateCredentials(); err != nil {
 		Logger.Errorf("Failed to rotate credentials: %v", err)
@@ -84,11 +84,11 @@ func main() {
 
 	Logger.Infof("Credentials rotation completed!")
 	Logger.Infof("Operation summary - Created: %d, Errors: %d",
-		updater.summary.NumCreated,
-		updater.summary.NumErrors)
+		updater.summary.numCreated,
+		updater.summary.numErrors)
 }
 
-func NewCredentialsUpdater(namespace, poolcApiEndpoint string) (*CredentialsUpdater, error) {
+func NewCredentialsUpdater(namespace, poolcAPIEndpoint string) (*CredentialsUpdater, error) {
 	// Create Kubernetes client using in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -107,9 +107,9 @@ func NewCredentialsUpdater(namespace, poolcApiEndpoint string) (*CredentialsUpda
 	return &CredentialsUpdater{
 		clientset:        clientset,
 		namespace:        namespace,
-		poolcApiEndpoint: poolcApiEndpoint,
+		poolcAPIEndpoint: poolcAPIEndpoint,
 		httpClient:       httpClient,
-		summary:          &OperationSummary{},
+		summary:          &operationSummary{},
 	}, nil
 }
 
@@ -125,7 +125,7 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 	}
 
 	Logger.Infof("Found %d users to process", len(users))
-	cu.summary.TotalUsers = len(users)
+	cu.summary.totalUsers = len(users)
 
 	// Delete existing namespace (this removes all ServiceAccounts)
 	if err := cu.deleteNamespace(ctx); err != nil {
@@ -138,13 +138,13 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 	}
 
 	// Create ServiceAccounts for all users
-	serviceAccountMap := make(ServiceAccountMappings)
+	serviceAccountMap := make(serviceAccountMappings)
 	for _, user := range users {
 		serviceAccountName := cu.generateServiceAccountName(user)
 
 		if err := cu.createServiceAccount(ctx, user, serviceAccountName); err != nil {
-			Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.LoginId, err)
-			cu.summary.NumErrors++
+			Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.LoginID, err)
+			cu.summary.numErrors++
 			continue
 		}
 
@@ -152,13 +152,13 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 		token, err := cu.generateServiceAccountToken(ctx, serviceAccountName)
 		if err != nil {
 			Logger.Errorf("Failed to generate token for ServiceAccount %s: %v", serviceAccountName, err)
-			cu.summary.NumErrors++
+			cu.summary.numErrors++
 			continue
 		}
 
 		// Add to the map for API report
 		serviceAccountMap[user.UUID] = token
-		cu.summary.NumCreated++
+		cu.summary.numCreated++
 	}
 
 	// Send ServiceAccount mappings to the PoolC API server
@@ -169,16 +169,16 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 	return nil
 }
 
-func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
-	Logger.Infof("Fetching users from the PoolC API server: %s", cu.poolcApiEndpoint)
+func (cu *CredentialsUpdater) fetchUsers() ([]user, error) {
+	Logger.Infof("Fetching users from the PoolC API server: %s", cu.poolcAPIEndpoint)
 
-	req, err := http.NewRequest("GET", cu.poolcApiEndpoint, nil)
+	req, err := http.NewRequest("GET", cu.poolcAPIEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
 	// Add API key header
-	apiKey, err := getApiKeyFrom(ApiKeyMountPath)
+	apiKey, err := getAPIKeyFrom(apiKeyMountPath)
 	if err != nil {
 		return nil, fmt.Errorf("faild to retrieve API key: %v", err)
 	}
@@ -194,7 +194,7 @@ func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
 		return nil, fmt.Errorf("non-success response status code %d from the PoolC API server", resp.StatusCode)
 	}
 
-	var apiResponse MemberAPIResponse
+	var apiResponse memberAPIResponse
 	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
@@ -203,7 +203,7 @@ func (cu *CredentialsUpdater) fetchUsers() ([]User, error) {
 }
 
 func (cu *CredentialsUpdater) deleteNamespace(ctx context.Context) error {
-	const WaitSeconds = 30
+	const waitSeconds = 30
 
 	Logger.Infof("Deleting namespace: %s", cu.namespace)
 
@@ -219,7 +219,7 @@ func (cu *CredentialsUpdater) deleteNamespace(ctx context.Context) error {
 
 	// Wait for namespace to be fully deleted
 	Logger.Infof("Waiting for namespace %s to be deleted...", cu.namespace)
-	for i := 0; i < WaitSeconds; i++ { // Wait up to `WaitSeconds` seconds
+	for i := 0; i < waitSeconds; i++ { // Wait up to `WaitSeconds` seconds
 		_, err := cu.clientset.CoreV1().Namespaces().Get(ctx, cu.namespace, metav1.GetOptions{})
 		if err != nil && errors.IsNotFound(err) {
 			return nil
@@ -250,8 +250,8 @@ func (cu *CredentialsUpdater) createNamespace(ctx context.Context) error {
 	return nil
 }
 
-func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user User, serviceAccountName string) error {
-	Logger.Infof("Creating ServiceAccount %s for user %s", serviceAccountName, user.LoginId)
+func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user user, serviceAccountName string) error {
+	Logger.Infof("Creating ServiceAccount %s for user %s", serviceAccountName, user.LoginID)
 
 	serviceAccount := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
@@ -275,23 +275,23 @@ func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user Use
 	return nil
 }
 
-func (cu *CredentialsUpdater) generateServiceAccountName(user User) string {
-	const SuffixLen = 4
+func (cu *CredentialsUpdater) generateServiceAccountName(user user) string {
+	const suffixLen = 4
 	// ServiceAccount names cannot contain uppercase letters, while user IDs
 	// can contain uppercase letters and are case-sensitive (so we can't simply
 	// lowercase the given `user.LoginId`). To work around this, we append the
 	// last `SuffixLen` characters of the UUID to the lowercased `user.LoginId`
 	// if it contains uppercase letters.
-	if strings.IndexFunc(user.LoginId, unicode.IsUpper) != -1 {
-		if len(user.UUID) >= SuffixLen {
+	if strings.IndexFunc(user.LoginID, unicode.IsUpper) != -1 {
+		if len(user.UUID) >= suffixLen {
 			return fmt.Sprintf(
-				"%s-%s", strings.ToLower(user.LoginId), user.UUID[len(user.UUID)-SuffixLen:],
+				"%s-%s", strings.ToLower(user.LoginID), user.UUID[len(user.UUID)-suffixLen:],
 			)
 		}
-		Logger.Warnf("Malformed UUID '%s' for user %s", user.UUID, user.LoginId)
-		return fmt.Sprintf("%s-%s", strings.ToLower(user.LoginId), user.UUID)
+		Logger.Warnf("Malformed UUID '%s' for user %s", user.UUID, user.LoginID)
+		return fmt.Sprintf("%s-%s", strings.ToLower(user.LoginID), user.UUID)
 	}
-	return user.LoginId
+	return user.LoginID
 }
 
 func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, serviceAccountName string) (string, error) {
@@ -303,7 +303,7 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 			// A URL to talk with kube-apiserver
 			Audiences: []string{"https://kubernetes.default.svc"},
 			// Set token expiration to 1 week
-			ExpirationSeconds: func() *int64 { i := int64(TokenExpirationSeconds); return &i }(),
+			ExpirationSeconds: func() *int64 { i := int64(tokenExpirationSeconds); return &i }(),
 		},
 	}
 
@@ -321,7 +321,7 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 	return tokenResponse.Status.Token, nil
 }
 
-func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap ServiceAccountMappings) error {
+func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap serviceAccountMappings) error {
 	Logger.Infof("Sending service account token mappings to the PoolC API server: %d mappings", len(serviceAccountMap))
 
 	// Convert map to JSON
@@ -331,7 +331,7 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 	}
 
 	// Create POST request
-	req, err := http.NewRequest("POST", cu.poolcApiEndpoint, bytes.NewReader(serviceAccountMapJson))
+	req, err := http.NewRequest("POST", cu.poolcAPIEndpoint, bytes.NewReader(serviceAccountMapJson))
 	if err != nil {
 		return fmt.Errorf("failed to create POST request: %v", err)
 	}
@@ -340,7 +340,7 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 	req.Header.Set("Content-Type", "application/json")
 
 	// Add API key header
-	apiKey, err := getApiKeyFrom(ApiKeyMountPath)
+	apiKey, err := getAPIKeyFrom(apiKeyMountPath)
 	if err != nil {
 		return fmt.Errorf("faild to retrieve API key: %v", err)
 	}
@@ -363,7 +363,7 @@ func (cu *CredentialsUpdater) sendServiceAccountMappings(serviceAccountMap Servi
 	return nil
 }
 
-func getApiKeyFrom(path string) (string, error) {
+func getAPIKeyFrom(path string) (string, error) {
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to read secret API key: %v", err)
