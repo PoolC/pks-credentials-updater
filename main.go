@@ -269,7 +269,7 @@ func (cu *CredentialsUpdater) createServiceAccount(ctx context.Context, user use
 
 	_, err := cu.clientset.CoreV1().ServiceAccounts(cu.namespace).Create(ctx, serviceAccount, metav1.CreateOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to create service account: %v", err)
+		return fmt.Errorf("failed to create ServiceAccount: %v", err)
 	}
 
 	return nil
@@ -322,12 +322,12 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 }
 
 func (cu *CredentialsUpdater) sendServiceAccountTokens(serviceAccountTokenMap serviceAccountTokenByUUID) error {
-	Logger.Infof("Sending service account token mappings to the PoolC API server: %d mappings", len(serviceAccountTokenMap))
+	Logger.Infof("Sending ServiceAccount tokens to the PoolC API server: %d tokens", len(serviceAccountTokenMap))
 
 	// Convert map to JSON
 	payload, err := json.Marshal(serviceAccountTokenMap)
 	if err != nil {
-		return fmt.Errorf("failed to marshal mappings: %v", err)
+		return fmt.Errorf("failed to marshal serviceAccountTokenMap: %v", err)
 	}
 
 	// Create POST request
@@ -358,7 +358,7 @@ func (cu *CredentialsUpdater) sendServiceAccountTokens(serviceAccountTokenMap se
 		return fmt.Errorf("non-success response status code %d from the PoolC API server", resp.StatusCode)
 	}
 
-	Logger.Infof("Sent %d service account token mappings", len(serviceAccountTokenMap))
+	Logger.Infof("Sent %d ServiceAccount tokens", len(serviceAccountTokenMap))
 
 	return nil
 }
