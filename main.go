@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -138,27 +139,65 @@ func (cu *CredentialsUpdater) RotateCredentials() error {
 		return fmt.Errorf("failed to recreate namespace: %v", err)
 	}
 
-	// Create ServiceAccounts for all users
-	serviceAccountTokenMap := make(serviceAccountTokenByUUID)
+	type result struct {
+		userUUID string
+		token    string
+		err      error
+	}
+	const maxWorkers = 100
+	var wg sync.WaitGroup
+	jobs := make(chan user, len(users))
+	results := make(chan result, len(users))
+	worker := func() {
+		defer wg.Done()
+
+		for user := range jobs {
+			serviceAccountName := cu.generateServiceAccountName(user)
+			if err := cu.createServiceAccount(ctx, user, serviceAccountName); err != nil {
+				Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.LoginID, err)
+				results <- result{user.UUID, "", err}
+				continue
+			}
+
+			token, err := cu.generateServiceAccountToken(ctx, serviceAccountName)
+			if err != nil {
+				Logger.Errorf("Failed to generate token for ServiceAccount %s: %v", serviceAccountName, err)
+				results <- result{user.UUID, "", err}
+				continue
+			}
+
+			results <- result{user.UUID, token, nil}
+		}
+	}
+
+	wg.Add(maxWorkers)
+	for range maxWorkers {
+		// I assume this line will either succeed or cause the program to crash.
+		// It should never fail silently and let the loop continue, otherwise
+		// `wg.Wait()` would block forever.
+		go worker()
+	}
+
 	for _, user := range users {
-		serviceAccountName := cu.generateServiceAccountName(user)
+		jobs <- user
+	}
+	close(jobs)
 
-		if err := cu.createServiceAccount(ctx, user, serviceAccountName); err != nil {
-			Logger.Errorf("Failed to create ServiceAccount for user %s: %v", user.LoginID, err)
+	// We can leave this for the main goroutine since we're using buffered
+	// channels. With unbuffered channels, we must use a separate goroutine,
+	// because receiving from the `results` channel happens after `wg.Wait()`.
+	// Otherwise, we'd get a deadlock: no worker can send data without blocking,
+	// since the receive side isn’t active yet.
+	wg.Wait()
+	close(results)
+
+	serviceAccountTokenMap := make(serviceAccountTokenByUUID)
+	for result := range results {
+		if result.err != nil {
 			cu.summary.numErrors++
 			continue
 		}
-
-		// Generate token for the ServiceAccount
-		token, err := cu.generateServiceAccountToken(ctx, serviceAccountName)
-		if err != nil {
-			Logger.Errorf("Failed to generate token for ServiceAccount %s: %v", serviceAccountName, err)
-			cu.summary.numErrors++
-			continue
-		}
-
-		// Add to the map for API report
-		serviceAccountTokenMap[user.UUID] = token
+		serviceAccountTokenMap[result.userUUID] = result.token
 		cu.summary.numCreated++
 	}
 
