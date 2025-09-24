@@ -116,7 +116,8 @@ func NewCredentialsUpdater(namespace, poolcAPIEndpoint string) (*CredentialsUpda
 func (cu *CredentialsUpdater) RotateCredentials() error {
 	Logger.Infof("Starting credentials rotation process...")
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
 	// Fetch users from the PoolC API server
 	users, err := cu.fetchUsers()
