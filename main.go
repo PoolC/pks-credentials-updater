@@ -97,6 +97,10 @@ func NewCredentialsUpdater(namespace, poolcAPIEndpoint string) (*CredentialsUpda
 		return nil, fmt.Errorf("failed to get in-cluster config: %v", err)
 	}
 
+	config.QPS = 100
+	config.Burst = 100
+	fmt.Printf("QPS: %f | Burst: %d\n", config.QPS, config.Burst)
+
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes client: %v", err)
