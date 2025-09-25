@@ -77,7 +77,9 @@ func main() {
 	Logger.Infof("Starting credentials rotation for namespace: %s", namespace)
 	Logger.Infof("Using the PoolC API server: %s", endpoint)
 
-	if err := updater.RotateCredentials(); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	if err := updater.RotateCredentials(ctx); err != nil {
 		Logger.Errorf("Failed to rotate credentials: %v", err)
 		os.Exit(1)
 	}
@@ -113,11 +115,8 @@ func NewCredentialsUpdater(namespace, poolcAPIEndpoint string) (*CredentialsUpda
 	}, nil
 }
 
-func (cu *CredentialsUpdater) RotateCredentials() error {
+func (cu *CredentialsUpdater) RotateCredentials(ctx context.Context) error {
 	Logger.Infof("Starting credentials rotation process...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
 
 	// Fetch users from the PoolC API server
 	users, err := cu.fetchUsers()
