@@ -119,7 +119,7 @@ func (cu *CredentialsUpdater) RotateCredentials(ctx context.Context) error {
 	Logger.Infof("Starting credentials rotation process...")
 
 	// Fetch users from the PoolC API server
-	users, err := cu.fetchUsers()
+	users, err := cu.fetchUsers(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch users: %v", err)
 	}
@@ -162,17 +162,17 @@ func (cu *CredentialsUpdater) RotateCredentials(ctx context.Context) error {
 	}
 
 	// Send ServiceAccount mappings to the PoolC API server
-	if err := cu.sendServiceAccountTokens(serviceAccountTokenMap); err != nil {
+	if err := cu.sendServiceAccountTokens(ctx, serviceAccountTokenMap); err != nil {
 		return fmt.Errorf("failed to send mappings to PoolC API server: %v", err)
 	}
 
 	return nil
 }
 
-func (cu *CredentialsUpdater) fetchUsers() ([]user, error) {
+func (cu *CredentialsUpdater) fetchUsers(ctx context.Context) ([]user, error) {
 	Logger.Infof("Fetching users from the PoolC API server: %s", cu.poolcAPIEndpoint)
 
-	req, err := http.NewRequest("GET", cu.poolcAPIEndpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", cu.poolcAPIEndpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
@@ -321,7 +321,7 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 	return tokenResponse.Status.Token, nil
 }
 
-func (cu *CredentialsUpdater) sendServiceAccountTokens(serviceAccountTokenMap serviceAccountTokenByUUID) error {
+func (cu *CredentialsUpdater) sendServiceAccountTokens(ctx context.Context, serviceAccountTokenMap serviceAccountTokenByUUID) error {
 	Logger.Infof("Sending ServiceAccount tokens to the PoolC API server: %d tokens", len(serviceAccountTokenMap))
 
 	// Convert map to JSON
@@ -331,7 +331,7 @@ func (cu *CredentialsUpdater) sendServiceAccountTokens(serviceAccountTokenMap se
 	}
 
 	// Create POST request
-	req, err := http.NewRequest("POST", cu.poolcAPIEndpoint, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, "POST", cu.poolcAPIEndpoint, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("failed to create POST request: %v", err)
 	}
