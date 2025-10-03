@@ -301,7 +301,7 @@ func (cu *CredentialsUpdater) generateServiceAccountToken(ctx context.Context, s
 	tokenRequest := &authv1.TokenRequest{
 		Spec: authv1.TokenRequestSpec{
 			// A URL to talk with kube-apiserver
-			Audiences: []string{"https://kubernetes.default.svc"},
+			Audiences: []string{"https://kubernetes.default.svc.cluster.local"},
 			// Set token expiration to 1 week
 			ExpirationSeconds: func() *int64 { i := int64(TokenExpirationSeconds); return &i }(),
 		},
